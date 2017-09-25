@@ -1,0 +1,217 @@
+---
+layout: post
+title: "思科NCS6008路由器"
+date: 2017-09-12 18:00
+comments: true
+tags: 
+	- 路由器
+	- 网络
+key: "1"
+---
+>参考思科架构文档描述，仅作科普使用，看不懂的我也不负责（^-^），其实有兴趣的可以一起讨论，欢迎！
+
+NCS6008是思科公司继CRS-X之后推出的核心路由器产品（后续有机会我们再分析一下CRS-X，毕竟这是核心路由器的里程碑产品）。
+
+<!-- more -->
+
+# 1 线卡槽单机框（单机系统）
+
+![线卡框](http://upload-images.jianshu.io/upload_images/7246758-11ec63764cdb1ed8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+主要组成部分：
+* 8个1Tbps线卡
+   - 定制的专用NPU
+   - 大规模的转发&服务
+* 高速的交换架构（Switch Fabric）
+   - 完全冗余
+   - 3种不同类型（SC/B2B/MC）
+* 冗余的路由处理器
+
+线卡框基本部件如下图所示：
+
+![前视图](http://upload-images.jianshu.io/upload_images/7246758-810b6e988d5897a9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![后视图](http://upload-images.jianshu.io/upload_images/7246758-8c6127fec78b8181.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+NCS6008还很人性化地提供了触摸屏，用于显示系统状态和警告信息。
+
+![触摸屏显示](http://upload-images.jianshu.io/upload_images/7246758-aab87b164ad78e05.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+下面是风扇和散热通道，风扇做了冗余备份：
+
+![风扇](http://upload-images.jianshu.io/upload_images/7246758-4dcf059c14445d23.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![风道](http://upload-images.jianshu.io/upload_images/7246758-5e9ba3ff310f6563.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+## 1.1 线卡
+* NCS6008单机系统包含8个线卡槽位，每槽高达1Tbps的双工速率。
+* 使用Cisco公司自己的 nPower X1 & nPower X1e网络处理器支持。
+* 根据以下不同，有多种线卡类型：
+    - 规模和功能
+    - 端口速率
+    - 光类型
+
+![线卡命名](http://upload-images.jianshu.io/upload_images/7246758-701a4df50eda0a93.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 1.1.1 线卡类型
+#### 100G线卡
+* 10X100G CXP接口线卡
+    - 100G和10G的接口
+    - 短距离光通信
+    - nPower X1网络处理器
+
+* 10×100G CPAK接口线卡
+    - 支持任意速率接口10/40/100G
+        - 10×10G
+        - 1×100G
+        - 2×40G
+    - CPAK短距离或者LR4/LR10长距离
+    - nPower X1网络处理器
+
+![两种100G线卡](http://upload-images.jianshu.io/upload_images/7246758-f78c90928feac8c8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+#### 10G线卡
+* 60x10G SFP+（单张线卡600G容量）
+    - SR, LR, ZR SFP+ Options
+    - WANPHY and OTU-2 Support
+    - Tune-able DWDM 10G (future)
+    - nPowerX1e 网络处理器
+
+![10G线卡-接口类型及传输距离参数](http://upload-images.jianshu.io/upload_images/7246758-1a9839827ea3ec9f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+#### 100G PYAG线卡
+* PYAG线卡
+    - 10个物理口，2/4个可用端口
+*  通过软件许可添加更多可用端口
+    - 每个License许可2个端口
+
+### 1.1.2 线卡架构
+
+NCS6008每张线卡上包含2个板子：
+* 主板：
+    - 2个Slices
+    - CPU
+* 子板：
+    - 3个Slices
+
+![线卡物理架构](http://upload-images.jianshu.io/upload_images/7246758-25caa570dd6a1034.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+其中，每个Slices负责200G流量，因此，每张线卡支持1TB的双线流量。
+
+#### Slices
+
+![Slices](http://upload-images.jianshu.io/upload_images/7246758-df305cb7b5ec50b2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+Slices特性如下：
+* 200G双向流量能力
+* Slices上独立的报文处理
+* 对于10×100G线卡，包含5个Slices，每个Slices具有2个接口；对于60×10G线卡，包含4个Slices，每个Slices具有15个接口
+* 单个Slices错误不会影响其他Slices的运行
+
+#### NPU
+
+![NPU](http://upload-images.jianshu.io/upload_images/7246758-8833eb3470e745b2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+NPU负责实现报文处理，NCS6008上使用Cisco的nPower×1 & nPower×1e处理器：
+* 每个处理器上具有336个报文处理器引擎（PPE），800MHz
+* 每个PPE上可以运行2个线程
+* 130Mpps；200Gbps全双工
+* 集成MAC
+* 15×10G，5×40G，2×100G
+* nPowerX1具有片上TCAM
+* nPowerX1e具有片外TCAM
+
+#### Switch Fabric
+![Switch Fabric](http://upload-images.jianshu.io/upload_images/7246758-7660498be51b971e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+特性：
+* 三种类型的Fabric：
+    - NC6-FC用于单机设备
+    - NC6-MC用于多机框设备
+* 6个Fabric板卡：
+    - 5+1 转发面（每个板卡构成一个转发平面）
+* 非阻塞的三级fabric
+* VOQ调度
+    - 分布式信用调度器
+    - 64-256B大小的报文
+* 每个Slices都需要连接到所有的转发平面上
+
+#### 三级Fabric
+
+![三级交换](http://upload-images.jianshu.io/upload_images/7246758-b4f4b4ea07a90d5b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+* F1、F2、F3用于背靠背集群和多机集群
+* F123用于单机框设备
+
+#### 单机框Fabric连接
+
+![单机系统Fabric连接](http://upload-images.jianshu.io/upload_images/7246758-d1772ee13440ca12.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+# 2 NCS6008的数据路径
+
+* 报文从不同类型的物理接口上接收
+* NP上的报文处理引擎对报文进行各种处理
+* 报文经由Fabric Interface ASIC送往Switch Fabric。（FAP）
+* Switch Fabric根据报文信息将报文转发到Egress Slices
+* Egress Slices对报文进行下行处理
+* 报文从不同类型的物理接口上发送出去
+
+![数据路径](http://upload-images.jianshu.io/upload_images/7246758-0c1c154336710f61.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+更为详细的处理过程如下图所示：
+
+![数据处理](http://upload-images.jianshu.io/upload_images/7246758-121dac950cca5b4f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+* Ingress报文处理包括L2/L3处理，查表操作，ACL，策略及其他处理。
+* FIA将报文切割成cell转发给Switch Fabric。
+* 下行FIA将cell重组成报文。
+* Egress报文处理包括Egress、ACL、策略、队列调度、整形、丢弃等等。
+
+#### NPU对报文的处理
+* MAC/OTN层实现
+* ACL 过滤
+* QoS 特性：
+    - 分类、策略、设置
+* 转发功能
+    - CEF, FIB 查找, VOQ 选择, uRPF 检查
+* Netflow
+
+#### FAP对报文处理
+* 执行CRC操作
+* 将报文切割成64-256B的cells
+* 将cells发送到fabric
+    - 在所有可用链路上实现负载均衡
+* VOQ队列基于信用调度
+    - 信用是由Egress FIA产生的
+
+#### Switch Fabric对报文处理
+* 将cell路由到出口FIA
+* 复制多播报文到FIAs
+    - 当超过一个出口目的FIAs时
+
+#### 出口FIA对报文的处理
+* 接收Cells
+    - 对收到的cell执行CRC检测
+* 将cell重组成报文
+    - 对报文执行CRC检测
+
+#### 出口NPU对报文的处理
+* MAC/OTN layer implementation
+* Forwarding functions:
+    - L2 rewrite based on adjacency table
+* ACL filtering
+* QoS features:
+    - Classification, Policing, Setting
+* Netflow
+
+#### 报文生命周期--转发报文
+
+![转发报文](http://upload-images.jianshu.io/upload_images/7246758-c2f64ed899c9edc0.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+#### 报文生命周期--送LC处理
+
+![报文送LC](http://upload-images.jianshu.io/upload_images/7246758-61d8f44409f3b6ce.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+#### 报文生命周期--送RP处理
+
+![报文送RP](http://upload-images.jianshu.io/upload_images/7246758-2ae7370a1dbf0963.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
